@@ -401,12 +401,16 @@ Tracking the end-to-end development phases of **ShopSphere**, a full-stack produ
   - Created `.github/workflows/backend-ci.yml`: Java 21 LTS + Maven dependency caching, `mvn clean test` (143 unit & integration tests against in-memory H2 in MySQL mode), executable JAR packaging, and workflow step summaries.
   - Created `.github/workflows/frontend-ci.yml`: Node 20 LTS + npm caching, deterministic `npm ci`, Vitest execution (3/3 unit tests), Vite production build verification (`dist/index.html`, `dist/assets`), and workflow step summaries.
   - Created `.github/workflows/docker-publish.yml`: Pre-requisite test gates, Docker BuildKit multi-stage builds with GitHub Actions layer caching (`type=gha`), lowercase GHCR image naming, immutable commit SHA + SemVer tags, gated `ghcr.io` publishing (restricted to `main`/tags; PRs build without pushing), and Trivy container vulnerability scanning.
+  - Pinned `aquasecurity/trivy-action` to immutable commit SHA `ed142fd0673e97e23eac54620cfb913e5ce36c25` (`v0.36.0`) with authenticated GHCR credentials and short commit SHA image targeting (`sha-${SHORT_SHA}`).
+  - Enforced security gate with `exit-code: '1'`, `severity: 'CRITICAL,HIGH'`, and `ignore-unfixed: true`, ensuring any unpatched vulnerabilities block pipeline deployment.
   - Created production deployment manifest [`docker-compose.prod.yml`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/docker-compose.prod.yml) pulling pre-built GHCR images with immutable commit SHA tags.
   - Created [`DEPLOYMENT_GUIDE.md`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/DEPLOYMENT_GUIDE.md) detailing GHCR authentication, immutable image tag selection, named volume protection, zero-downtime rolling updates, and fast rollback procedures.
-  - Published repository to GitHub at [`https://github.com/vvsprasad9/ShopSphere`](https://github.com/vvsprasad9/ShopSphere) (Public visibility, 323 files, commit `a7350bb`).
+  - Published repository to GitHub at [`https://github.com/vvsprasad9/ShopSphere`](https://github.com/vvsprasad9/ShopSphere) (Public visibility, commit `c8a4803`).
   - Remote GitHub Actions execution verified live:
     - **Backend CI**: `status: completed`, `conclusion: success` (all 143 tests passed & JAR packaged on Ubuntu runner).
     - **Frontend CI**: `status: completed`, `conclusion: success` (Vitest passed & Vite production build verified on Ubuntu runner).
-    - **Docker Build & GHCR Publish**: Active in-progress execution.
+    - **Docker Build & Publish Frontend**: `status: completed`, `conclusion: success` (`ghcr.io/vvsprasad9/shopsphere-frontend:sha-c8a4803` and `:latest` published).
+    - **Docker Build & Publish Backend**: `status: completed`, `conclusion: success` (`ghcr.io/vvsprasad9/shopsphere-backend:sha-c8a4803` and `:latest` published).
+    - **Container Vulnerability Scan (Trivy)**: Resolved action `v0.36.0`, scanned both published images, detected base OS/runtime CVEs, and exited with code 1 to enforce deployment block.
   - Local verification: Backend tests (143/143 passed in 57.2s), backend package (BUILD SUCCESS in 6.5s), frontend tests (3/3 passed), frontend build (13.3s), compose validation (exited code 0).
 - [ ] Module 6: AWS Cloud Deployment.
