@@ -1,7 +1,7 @@
 # ===================================================================
-# Stage 1: Build the React SPA application using Node.js 20 LTS
+# Stage 1: Build the React SPA application using Node.js 22 LTS
 # ===================================================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -17,6 +17,9 @@ RUN npm run build
 # Stage 2: Minimal Production Runtime Image (Nginx Alpine Non-Root)
 # ===================================================================
 FROM nginx:1.27-alpine AS runner
+
+# Upgrade base OS packages to pull official vendor security patches (e.g. brotli, libcrypto)
+RUN apk update && apk upgrade --no-cache
 
 # Remove default static files and sample configs
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/*

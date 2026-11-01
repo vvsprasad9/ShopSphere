@@ -18,6 +18,9 @@ RUN mvn clean package -DskipTests -B
 # ===================================================================
 FROM eclipse-temurin:21-jre-alpine AS runner
 
+# Upgrade base OS packages to pull official vendor security patches
+RUN apk update && apk upgrade --no-cache
+
 # Create dedicated non-root user and group
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

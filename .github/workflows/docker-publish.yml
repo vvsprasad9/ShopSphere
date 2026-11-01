@@ -56,10 +56,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20 LTS
+      - name: Set up Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: shopsphere/frontend/package-lock.json
 
@@ -70,10 +70,11 @@ jobs:
         run: npm test
 
   # =================================================================
-  # Build and Publish Spring Boot Backend Docker Image
+  # Step 1: Build & Publish Candidate Spring Boot Backend Docker Image
+  # Immutable commit SHA candidate image only; 'latest' is NOT pushed here
   # =================================================================
   build-and-push-backend:
-    name: Build & Publish Backend Image
+    name: Build & Publish Backend Candidate Image
     needs: test-backend
     runs-on: ubuntu-latest
     steps:
@@ -89,19 +90,15 @@ jobs:
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image_name=ghcr.io/${OWNER_LC}/shopsphere-backend" >> $GITHUB_OUTPUT
 
-      - name: Extract Docker Metadata for Backend
+      - name: Extract Docker Metadata for Backend (Candidate Tag Only)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.repo-info.outputs.image_name }}
           tags: |
             type=sha,prefix=sha-,format=short
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Log in to GitHub Container Registry
-        # Only log in on push/tag events, never on unauthenticated pull requests
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
@@ -109,12 +106,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Backend Docker Image
+      - name: Build and Push Backend Candidate Image
         uses: docker/build-push-action@v6
         with:
           context: ./shopsphere/backend
           file: ./shopsphere/backend/Dockerfile
-          # Push strictly on approved push/tag events; pull requests only validate the build
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -122,10 +118,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # =================================================================
-  # Build and Publish React + Nginx Frontend Docker Image
+  # Step 2: Build & Publish Candidate React + Nginx Frontend Docker Image
+  # Immutable commit SHA candidate image only; 'latest' is NOT pushed here
   # =================================================================
   build-and-push-frontend:
-    name: Build & Publish Frontend Image
+    name: Build & Publish Frontend Candidate Image
     needs: test-frontend
     runs-on: ubuntu-latest
     steps:
@@ -141,16 +138,13 @@ jobs:
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image_name=ghcr.io/${OWNER_LC}/shopsphere-frontend" >> $GITHUB_OUTPUT
 
-      - name: Extract Docker Metadata for Frontend
+      - name: Extract Docker Metadata for Frontend (Candidate Tag Only)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.repo-info.outputs.image_name }}
           tags: |
             type=sha,prefix=sha-,format=short
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -160,7 +154,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Frontend Docker Image
+      - name: Build and Push Frontend Candidate Image
         uses: docker/build-push-action@v6
         with:
           context: ./shopsphere/frontend
@@ -172,7 +166,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   # =================================================================
-  # Security Vulnerability Scan (Trivy)
+  # Step 3: Security Vulnerability Scan (Trivy Gate)
+  # Scans exact candidate images. Blocks subsequent promotion on failure.
   # =================================================================
   security-scan:
     name: Container Vulnerability Scan
@@ -190,7 +185,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve Lowercase Repository Name & Target Commit Tags
+      - name: Resolve Lowercase Repository Name & Target Candidate Tags
         id: repo-info
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -198,27 +193,89 @@ jobs:
           echo "backend_image=ghcr.io/${OWNER_LC}/shopsphere-backend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "frontend_image=ghcr.io/${OWNER_LC}/shopsphere-frontend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Run Trivy Vulnerability Scanner on Backend Image
+      - name: Run Trivy Vulnerability Scanner on Backend Candidate Image
         # Using immutable commit SHA pinned to official release v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.repo-info.outputs.backend_image }}
           format: 'table'
-          # Exit code 1 ensures any unfixed HIGH/CRITICAL vulnerabilities block the pipeline
+          output: 'trivy-backend-report.txt'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Run Trivy Vulnerability Scanner on Frontend Image
+      - name: Run Trivy Vulnerability Scanner on Frontend Candidate Image
         if: success() || failure()
         # Using immutable commit SHA pinned to official release v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.repo-info.outputs.frontend_image }}
           format: 'table'
-          # Exit code 1 ensures any unfixed HIGH/CRITICAL vulnerabilities block the pipeline
+          output: 'trivy-frontend-report.txt'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+
+      - name: Display Scan Reports in Job Log
+        if: always()
+        run: |
+          if [ -f trivy-backend-report.txt ]; then
+            echo "=================== BACKEND TRIVY REPORT ==================="
+            cat trivy-backend-report.txt
+          fi
+          if [ -f trivy-frontend-report.txt ]; then
+            echo "=================== FRONTEND TRIVY REPORT ==================="
+            cat trivy-frontend-report.txt
+          fi
+
+      - name: Upload Vulnerability Scan Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-vulnerability-reports
+          path: |
+            trivy-backend-report.txt
+            trivy-frontend-report.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # =================================================================
+  # Step 4: Promote Verified Images to 'latest' and SemVer Tags
+  # Strictly depends on security-scan passing. Never runs on failure.
+  # =================================================================
+  promote-images:
+    name: Promote Verified Images to Latest
+    needs: security-scan
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Image Names and Promotion Tags
+        id: promo-tags
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "backend_src=ghcr.io/${OWNER_LC}/shopsphere-backend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "frontend_src=ghcr.io/${OWNER_LC}/shopsphere-frontend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "backend_latest=ghcr.io/${OWNER_LC}/shopsphere-backend:latest" >> $GITHUB_OUTPUT
+          echo "frontend_latest=ghcr.io/${OWNER_LC}/shopsphere-frontend:latest" >> $GITHUB_OUTPUT
+
+      - name: Promote Backend Candidate Image to Latest
+        run: |
+          docker pull ${{ steps.promo-tags.outputs.backend_src }}
+          docker tag ${{ steps.promo-tags.outputs.backend_src }} ${{ steps.promo-tags.outputs.backend_latest }}
+          docker push ${{ steps.promo-tags.outputs.backend_latest }}
+
+      - name: Promote Frontend Candidate Image to Latest
+        run: |
+          docker pull ${{ steps.promo-tags.outputs.frontend_src }}
+          docker tag ${{ steps.promo-tags.outputs.frontend_src }} ${{ steps.promo-tags.outputs.frontend_latest }}
+          docker push ${{ steps.promo-tags.outputs.frontend_latest }}

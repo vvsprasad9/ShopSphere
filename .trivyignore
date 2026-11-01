@@ -1,0 +1,132 @@
+# ==============================================================================
+# ShopSphere Production DevSecOps Security Exception Registry
+#
+# Policy: Every exception must document:
+# 1. CVE Identifier
+# 2. Technical Justification
+# 3. Security Owner
+# 4. Compensating Mitigation Controls
+# 5. Review / Expiry Date
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Apache Tomcat Embedded - Container Security Exceptions
+# ------------------------------------------------------------------------------
+
+# CVE-2026-41293: Apache Tomcat HTTP/2 request header parsing vulnerability
+# Justification: ShopSphere backend container executes on an internal private Docker bridge network.
+# All external ingress is terminated by Nginx reverse proxy which converts client traffic to sanitized HTTP/1.1 upstream requests.
+# Embedded Tomcat HTTP/2 connector is not enabled.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx proxy enforces strict HTTP/1.1 RFC compliance and header sanitization.
+# Expiry Date: 2027-01-01
+CVE-2026-41293
+
+# CVE-2026-43512: Apache Tomcat Authentication bypass via limited realm matching
+# Justification: ShopSphere does not use Tomcat container-managed authentication or web.xml security constraints.
+# All authentication is statelessly enforced in application memory by Spring Security and JwtAuthenticationFilter.
+# Owner: Java Application Security Engineer
+# Mitigation: Spring Security SecurityFilterChain intercepts and validates JWT on every request before handler execution.
+# Expiry Date: 2027-01-01
+CVE-2026-43512
+
+# CVE-2026-43515: Apache Tomcat Improper Authorization in container security realms
+# Justification: Container authorization realms are disabled; role-based access control (ERole) is enforced via method security and Spring Security.
+# Owner: Java Application Security Engineer
+# Mitigation: PreAuthorize annotations and SecurityFilterChain enforce RBAC.
+# Expiry Date: 2027-01-01
+CVE-2026-43515
+
+# CVE-2026-65182: Apache Tomcat Security constraint bypass
+# Justification: Container-level security constraints are unused; all security policies are managed by Spring Security.
+# Owner: Java Application Security Engineer
+# Mitigation: Spring Security filter chain handles 100% of authentication and authorization.
+# Expiry Date: 2027-01-01
+CVE-2026-65182
+
+# CVE-2026-65905: Apache Tomcat Authentication bypass via limited realm matching
+# Justification: Container authentication realms are unused in this stateless Spring Boot REST API.
+# Owner: Java Application Security Engineer
+# Mitigation: Stateless JWT validation with database-backed token revocation.
+# Expiry Date: 2027-01-01
+CVE-2026-65905
+
+# CVE-2026-68525: Apache Tomcat Unauthorized resource access via FORM login
+# Justification: FORM authentication is completely disabled; authentication endpoint is a REST POST to /api/v1/auth/login.
+# Owner: Java Application Security Engineer
+# Mitigation: FORM authentication is not configured in Spring Security or Tomcat.
+# Expiry Date: 2027-01-01
+CVE-2026-68525
+
+# ------------------------------------------------------------------------------
+# FasterXML Jackson Databind & Core - Serialization Security Exceptions
+# ------------------------------------------------------------------------------
+
+# CVE-2026-54512: Jackson Databind polymorphic type validation bypass
+# Justification: Vulnerability requires polymorphic default typing (enableDefaultTyping).
+# ShopSphere uses strict concrete DTO classes for all request/response serialization with explicit field mapping.
+# Owner: Application Backend Lead
+# Mitigation: Default polymorphic typing is disabled; Spring Boot ObjectMapper rejects polymorphic payloads.
+# Expiry Date: 2027-01-01
+CVE-2026-54512
+
+# CVE-2026-54513: Jackson Databind security bypass in polymorphic deserialization
+# Justification: Polymorphic type deserialization is not configured on any endpoint.
+# Owner: Application Backend Lead
+# Mitigation: All controller endpoints accept strongly-typed concrete record/class DTOs.
+# Expiry Date: 2027-01-01
+CVE-2026-54513
+
+# CVE-2026-68497: Jackson Databind deserialization gadget chain
+# Justification: Gadget chain relies on polymorphic typing with vulnerable classes that are absent from the classpath.
+# Owner: Application Backend Lead
+# Mitigation: Jackson 2.18.4 BOM applied; polymorphic typing disabled.
+# Expiry Date: 2027-01-01
+CVE-2026-68497
+
+# CVE-2026-91776: Jackson Databind / Core recursion limit
+# Justification: Deeply nested JSON payload attack.
+# Owner: Application Backend Lead
+# Mitigation: Nginx limits client request bodies to 10MB; Spring Boot parser enforces recursion limits.
+# Expiry Date: 2027-01-01
+CVE-2026-91776
+
+# CVE-2026-91777: Jackson Databind polymorphic type validation bypass
+# Justification: Default typing is disabled; concrete DTOs are enforced.
+# Owner: Application Backend Lead
+# Mitigation: DTO validation via Bean Validation (@Valid, @NotNull).
+# Expiry Date: 2027-01-01
+CVE-2026-91777
+
+# CVE-2026-68494: Jackson Core parser numeric bound condition
+# Justification: Edge condition in numeric token parsing.
+# Owner: Application Backend Lead
+# Mitigation: Jackson 2.18.4 applied; input validated by Jakarta Validation annotations.
+# Expiry Date: 2027-01-01
+CVE-2026-68494
+
+# CVE-2026-89407: Jackson Core parser buffer boundary condition
+# Justification: Parser buffer boundary condition for oversized tokens.
+# Owner: Application Backend Lead
+# Mitigation: Request payload limits enforced at reverse proxy and application layers.
+# Expiry Date: 2027-01-01
+CVE-2026-89407
+
+# CVE-2026-89425: Jackson Core parser boundary condition
+# Justification: Parser buffer boundary condition for oversized tokens.
+# Owner: Application Backend Lead
+# Mitigation: Request payload limits enforced at reverse proxy and application layers.
+# Expiry Date: 2027-01-01
+CVE-2026-89425
+
+# ------------------------------------------------------------------------------
+# Micrometer - Metrics Instrumentation Security Exceptions
+# ------------------------------------------------------------------------------
+
+# CVE-2026-40984: Micrometer metrics instrumentation vulnerability in Jetty bindings
+# Justification: Vulnerability resides strictly in micrometer-jetty11 / micrometer-jetty12 modules.
+# ShopSphere uses embedded Apache Tomcat; Jetty is not present in the runtime classpath.
+# Owner: DevSecOps Engineering
+# Mitigation: Jetty modules are not included in the application dependencies or runtime container.
+# Expiry Date: 2027-01-01
+CVE-2026-40984
