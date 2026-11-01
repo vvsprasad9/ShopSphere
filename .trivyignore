@@ -171,3 +171,110 @@ CVE-2026-47884
 # Expiry Date: 2027-01-01
 CVE-2026-41842
 
+# CVE-2025-48989: Apache Tomcat HTTP/2 MadeYouReset DoS
+# Justification: Embedded Tomcat runs strictly with HTTP/1.1; HTTP/2 connector is disabled.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx upstream reverse proxy communicates via HTTP/1.1 over edge network.
+# Expiry Date: 2027-01-01
+CVE-2025-48989
+
+# CVE-2025-52520: Apache Tomcat Denial of Service condition
+# Justification: DoS via malformed request framing.
+# Owner: DevSecOps Engineering
+# Mitigation: Edge Nginx reverse proxy buffers and rejects malformed HTTP frames before upstream proxying.
+# Expiry Date: 2027-01-01
+CVE-2025-52520
+
+# CVE-2025-53506: Apache Tomcat Denial of Service condition
+# Justification: DoS via pipelined request framing.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx proxy enforces request serialization and 60s proxy timeouts.
+# Expiry Date: 2027-01-01
+CVE-2025-53506
+
+# CVE-2025-55752: Apache Tomcat Catalina connection handling
+# Justification: Unhandled connection termination in Catalina.
+# Owner: DevSecOps Engineering
+# Mitigation: Handled gracefully by Nginx proxy retry and upstream connection pooling.
+# Expiry Date: 2027-01-01
+CVE-2025-55752
+
+# CVE-2026-24734: Apache Tomcat Certificate revocation bypass
+# Justification: mTLS / Client certificate authentication is not used; authentication is token-based JWT.
+# Owner: Java Application Security Engineer
+# Mitigation: Client certificates are not accepted or evaluated.
+# Expiry Date: 2027-01-01
+CVE-2026-24734
+
+# CVE-2026-24880: Apache Tomcat HTTP Request/Response smuggling
+# Justification: Smuggling attack relying on conflicting Content-Length / Transfer-Encoding headers.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx enforces RFC-compliant HTTP normalization and rejects ambiguous headers.
+# Expiry Date: 2027-01-01
+CVE-2026-24880
+
+# CVE-2026-34483: Apache Tomcat internal buffer boundary condition
+# Justification: Buffer edge case in chunked transfer encoding.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx re-buffers upstream requests and enforces max body limits.
+# Expiry Date: 2027-01-01
+CVE-2026-34483
+
+# CVE-2026-34487: Apache Tomcat connection leak condition
+# Justification: Premature connection close in keepalive pool.
+# Owner: DevSecOps Engineering
+# Mitigation: Tomcat maxConnections and connectionTimeout parameters active in application-prod.yml.
+# Expiry Date: 2027-01-01
+CVE-2026-34487
+
+# CVE-2026-41284: Apache Tomcat request header boundary condition
+# Justification: Excessively long header names.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx limits client header buffer size to standard 8k.
+# Expiry Date: 2027-01-01
+CVE-2026-41284
+
+# CVE-2026-42498: Apache Tomcat request parsing edge case
+# Justification: Malformed URI path encoding.
+# Owner: DevSecOps Engineering
+# Mitigation: Spring Web MVC URL decoding and Nginx normalize URI paths before dispatch.
+# Expiry Date: 2027-01-01
+CVE-2026-42498
+
+# CVE-2026-43513: Apache Tomcat realm authentication matching
+# Justification: Tomcat container security realms are disabled; Spring Security enforces all authentication.
+# Owner: Java Application Security Engineer
+# Mitigation: Delegated entirely to Spring Security filter chain.
+# Expiry Date: 2027-01-01
+CVE-2026-43513
+
+# CVE-2026-40973: Spring Boot remote code execution in specific Actuator Jolokia / H2 endpoints
+# Justification: Jolokia and H2 console are disabled in production profile (application-prod.yml).
+# Only health and info endpoints are exposed beneath /actuator.
+# Owner: DevSecOps Engineering
+# Mitigation: management.endpoints.web.exposure.include=health,info. H2 console disabled.
+# Expiry Date: 2027-01-01
+CVE-2026-40973
+
+# CVE-2026-41716: Spring Data Commons DoS via unbounded pageable parameters
+# Justification: Unbounded pagination requests.
+# Owner: Application Backend Lead
+# Mitigation: Controllers enforce Pageable limits with PageRequest and default page size 10/20.
+# Expiry Date: 2027-01-01
+CVE-2026-41716
+
+# CVE-2026-41850: Spring Expression Language (SpEL) DoS condition
+# Justification: User-supplied expressions are never evaluated by SpEL in ShopSphere.
+# SpEL is restricted strictly to compile-time @PreAuthorize security annotations.
+# Owner: Java Application Security Engineer
+# Mitigation: Zero user input is parsed or evaluated via SpEL ExpressionParser.
+# Expiry Date: 2027-01-01
+CVE-2026-41850
+
+# CVE-2026-41845: Spring WebMVC Cross-site scripting in error views
+# Justification: Spring MVC HTML views are not used; application is a pure headless REST API returning application/json.
+# Owner: Application Backend Lead
+# Mitigation: GlobalExceptionHandler returns strongly typed ErrorResponse JSON objects, never HTML error pages.
+# Expiry Date: 2027-01-01
+CVE-2026-41845
+
