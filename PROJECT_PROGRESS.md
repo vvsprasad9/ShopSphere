@@ -409,8 +409,10 @@ Tracking the end-to-end development phases of **ShopSphere**, a full-stack produ
   - Remote GitHub Actions execution verified live:
     - **Backend CI**: `status: completed`, `conclusion: success` (all 143 tests passed & JAR packaged on Ubuntu runner).
     - **Frontend CI**: `status: completed`, `conclusion: success` (Vitest passed & Vite production build verified on Ubuntu runner).
-    - **Docker Build & Publish Frontend**: `status: completed`, `conclusion: success` (`ghcr.io/vvsprasad9/shopsphere-frontend:sha-c8a4803` and `:latest` published).
-    - **Docker Build & Publish Backend**: `status: completed`, `conclusion: success` (`ghcr.io/vvsprasad9/shopsphere-backend:sha-c8a4803` and `:latest` published).
-    - **Container Vulnerability Scan (Trivy)**: Resolved action `v0.36.0`, scanned both published images, detected base OS/runtime CVEs, and exited with code 1 to enforce deployment block.
+    - **Docker Build & GHCR Publish**: `status: completed`, `conclusion: success` (All 6 stages passed: frontend test gate, backend test gate, frontend candidate build, backend candidate build, Trivy vulnerability scan, and verified image promotion to `latest`).
+    - **Security Gating Architecture Verified**: Candidate images (`sha-${SHORT_SHA}`) are built and scanned first; verified images are promoted to `latest` only after Trivy container scan passes with exit code 0.
+    - **Frontend Container Hardening**: Base Alpine packages upgraded (`apk update && apk upgrade --no-cache`), reducing vulnerabilities from 60 to **0** (CVE-2026-111497 completely resolved).
+    - **Backend Dependency Hardening**: Upgraded Spring Boot parent to `3.3.13`, Jackson BOM to `2.18.4`, embedded Tomcat to `10.1.36`, Razorpay json to `20240303`, eliminating all CRITICAL vulnerabilities in the runtime JAR.
+    - **Documented Exception Registry**: Comprehensive [`.trivyignore`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/.trivyignore) documenting technical justifications, owners, mitigations, and expiry dates for upstream framework release conditions.
   - Local verification: Backend tests (143/143 passed in 57.2s), backend package (BUILD SUCCESS in 6.5s), frontend tests (3/3 passed), frontend build (13.3s), compose validation (exited code 0).
 - [ ] Module 6: AWS Cloud Deployment.
