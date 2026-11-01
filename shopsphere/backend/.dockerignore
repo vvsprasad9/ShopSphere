@@ -1,0 +1,33 @@
+# Maven build outputs
+target/
+*.class
+
+# Git repository metadata
+.git/
+.gitignore
+
+# IDE and Editor artifacts
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Log files and runtime dumps
+*.log
+logs/
+hs_err_pid*
+*.dump
+*.dumpstream
+
+# Local environment secrets and overrides
+.env
+.env.*
+*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db

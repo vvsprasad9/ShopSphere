@@ -1,0 +1,37 @@
+# ===================================================================
+# ShopSphere - Local Developer Override Configuration Template
+# ===================================================================
+# PURPOSE:
+#   This file provides convenient port exposures and debug settings for
+#   local development and database inspection.
+#
+# USAGE:
+#   1. Copy this file to docker-compose.override.yml:
+#        cp docker-compose.override.yml.example docker-compose.override.yml
+#   2. Start the stack:
+#        docker compose up -d
+#
+#   Docker Compose automatically combines docker-compose.yml and
+#   docker-compose.override.yml when invoked without -f flags.
+#
+# IMPORTANT:
+#   - NEVER commit your local docker-compose.override.yml with sensitive credentials.
+#   - NEVER deploy this override file to production environments!
+#   - In production, MySQL and Backend ports MUST NOT be exposed to the host.
+# ===================================================================
+
+services:
+  # Expose MySQL port to host localhost for GUI tools (DBeaver, MySQL Workbench, etc.)
+  mysql:
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  # Expose Spring Boot backend port to host localhost for direct API calls & Swagger UI
+  backend:
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Enable Swagger / OpenAPI UI at http://localhost:8080/swagger-ui/index.html
+      SWAGGER_ENABLED: "true"
+      # Enable detailed logging for ShopSphere application code during debugging
+      LOGGING_LEVEL_COM_SHOPSPHERE: "DEBUG"

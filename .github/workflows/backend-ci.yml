@@ -1,0 +1,72 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'shopsphere/backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'shopsphere/backend/**'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Maven Test & Package (Java 21)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shopsphere/backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Verify Maven and Java version
+        run: mvn -version
+
+      - name: Run Backend Unit & Integration Tests
+        # Tests use in-memory H2 in MySQL mode via application-test.yml (@ActiveProfiles("test"))
+        # No live external MySQL instance or credentials required
+        run: mvn clean test -B
+
+      - name: Package Spring Boot Executable JAR
+        # Verifies executable packaging without re-running tests
+        run: mvn package -DskipTests -B
+
+      - name: Verify Packaged JAR Artifact
+        run: |
+          JAR_FILE=$(find target -name "shopsphere-backend-*.jar" ! -name "*.original")
+          if [ -z "$JAR_FILE" ]; then
+            echo "ERROR: Executable JAR not found in target directory!"
+            exit 1
+          fi
+          echo "Found build artifact: $JAR_FILE ($(du -h $JAR_FILE | cut -f1))"
+
+      - name: Generate Workflow Summary
+        if: always()
+        run: |
+          echo "### Backend CI Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Java Version:** 21 (Eclipse Temurin)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Tool:** Apache Maven" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Profile:** \`test\` (In-Memory H2 in MySQL compatibility mode)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Result:** ${{ job.status == 'success' && '✅ All Tests Passed & Artifact Packaged' || '❌ Test or Build Failure' }}" >> $GITHUB_STEP_SUMMARY

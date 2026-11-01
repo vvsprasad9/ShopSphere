@@ -1,0 +1,81 @@
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'shopsphere/frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'shopsphere/frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Node 20 LTS Test & Vite Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shopsphere/frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: shopsphere/frontend/package-lock.json
+
+      - name: Verify Node and npm version
+        run: |
+          node -v
+          npm -v
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Run Frontend Unit & Component Tests
+        # Executes Vitest in single-run mode
+        run: npm test
+
+      - name: Build Production Assets with Vite
+        # Uses .env.production with VITE_API_BASE_URL=/api/v1
+        run: npm run build
+
+      - name: Verify Production Build Artifacts
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERROR: dist/index.html is missing after build!"
+            exit 1
+          fi
+          if [ ! -d "dist/assets" ]; then
+            echo "ERROR: dist/assets directory is missing after build!"
+            exit 1
+          fi
+          echo "Production assets successfully generated:"
+          ls -lah dist
+
+      - name: Generate Workflow Summary
+        if: always()
+        run: |
+          echo "### Frontend CI Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js Version:** 20 LTS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package Manager:** npm (deterministic \`npm ci\` via \`package-lock.json\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Runner:** Vitest" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bundler:** Vite 5 (React 18 + Tailwind CSS)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Result:** ${{ job.status == 'success' && '✅ All Tests Passed & Distribution Built' || '❌ Test or Build Failure' }}" >> $GITHUB_STEP_SUMMARY

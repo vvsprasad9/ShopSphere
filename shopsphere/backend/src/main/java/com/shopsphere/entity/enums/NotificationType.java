@@ -1,0 +1,17 @@
+package com.shopsphere.entity.enums;
+
+public enum NotificationType {
+    ORDER_PLACED,
+    ORDER_CONFIRMED,
+    ORDER_SHIPPED,
+    ORDER_OUT_FOR_DELIVERY,
+    ORDER_DELIVERED,
+    ORDER_CANCELLED,
+    PAYMENT_SUCCESS,
+    PAYMENT_FAILED,
+    REFUND_PROCESSED,
+    ORDER_UPDATE,
+    PAYMENT_UPDATE,
+    PROMO,
+    SYSTEM
+}

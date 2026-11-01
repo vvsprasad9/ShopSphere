@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: shopsphere-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:5MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    doc-expansion: none
+
+# Application Specific Properties
+app:
+  jwt:
+    secret: ${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000} # 7 days
+  payment:
+    mock-enabled: ${APP_PAYMENT_MOCK_ENABLED:true}
+    razorpay:
+      key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder_key}
+      key-secret: ${RAZORPAY_KEY_SECRET:rzp_test_placeholder_secret}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:rzp_webhook_secret_placeholder}
+  admin:
+    first-name: ${ADMIN_FIRST_NAME:System}
+    last-name: ${ADMIN_LAST_NAME:Admin}
+    email: ${ADMIN_EMAIL:admin@shopsphere.com}
+    password: ${ADMIN_PASSWORD:AdminSecure@123}
+  upload:
+    dir: ${APP_UPLOAD_DIR:./uploads}
