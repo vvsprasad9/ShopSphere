@@ -130,3 +130,44 @@ CVE-2026-89425
 # Mitigation: Jetty modules are not included in the application dependencies or runtime container.
 # Expiry Date: 2027-01-01
 CVE-2026-40984
+
+# ------------------------------------------------------------------------------
+# Spring Framework & Tomcat Multipart - Remaining Documented Exceptions
+# ------------------------------------------------------------------------------
+
+# CVE-2025-48988: Apache Tomcat DoS in multipart upload handling
+# Justification: Edge case in multipart parsing. ShopSphere runs behind Nginx reverse proxy.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx enforces client_max_body_size 10M, rate limits, and 60s timeout before traffic reaches Tomcat.
+# Expiry Date: 2027-01-01
+CVE-2025-48988
+
+# CVE-2026-22732: Spring Security Web policy bypass for non-servlet router patterns
+# Justification: ShopSphere uses standard Spring MVC servlet-based security filters with explicit @PreAuthorize method annotations.
+# Owner: Java Application Security Engineer
+# Mitigation: Stateless SecurityFilterChain with SessionCreationPolicy.STATELESS and explicit method security @EnableMethodSecurity.
+# Expiry Date: 2027-01-01
+CVE-2026-22732
+
+# CVE-2025-41249: Spring Core annotation processing reflection condition
+# Justification: Compile-time / startup metadata processing. No user-controlled classes are reflected or loaded at runtime.
+# Owner: Java Application Security Engineer
+# Mitigation: Classloading and annotation scanning is restricted to internal package hierarchy com.shopsphere.*.
+# Expiry Date: 2027-01-01
+CVE-2025-41249
+
+# CVE-2026-47884: Spring WebMVC path traversal in resource handlers
+# Justification: Static resources are not served by Spring Boot; they are served entirely by Nginx in the frontend container.
+# Backend exposes only JSON REST APIs under /api/v1/*.
+# Owner: Application Backend Lead
+# Mitigation: Nginx reverse proxy isolates API routing; static files are served directly by Nginx with try_files $uri =404.
+# Expiry Date: 2027-01-01
+CVE-2026-47884
+
+# CVE-2026-41842: Spring Framework Denial of Service when parsing specific headers
+# Justification: Nginx frontend proxy normalizes and sanitizes all incoming headers before forwarding requests to backend.
+# Owner: DevSecOps Engineering
+# Mitigation: Nginx upstream reverse proxy sanitization and 60s timeout enforcement.
+# Expiry Date: 2027-01-01
+CVE-2026-41842
+
