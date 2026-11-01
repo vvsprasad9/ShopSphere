@@ -25,6 +25,11 @@
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <razorpay.version>1.4.6</razorpay.version>
+        <tomcat.version>10.1.36</tomcat.version>
+        <spring-security.version>6.3.8</spring-security.version>
+        <spring-framework.version>6.1.17</spring-framework.version>
+        <jackson-bom.version>2.18.2</jackson-bom.version>
+        <json.version>20240303</json.version>
     </properties>
 
     <dependencies>
@@ -104,6 +109,17 @@
             <groupId>com.razorpay</groupId>
             <artifactId>razorpay-java</artifactId>
             <version>${razorpay.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
         </dependency>
 
         <!-- Test Dependencies -->
@@ -111,6 +127,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.vaadin.external.google</groupId>
+                    <artifactId>android-json</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.security</groupId>
