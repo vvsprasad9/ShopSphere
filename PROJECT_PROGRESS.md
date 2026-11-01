@@ -403,5 +403,10 @@ Tracking the end-to-end development phases of **ShopSphere**, a full-stack produ
   - Created `.github/workflows/docker-publish.yml`: Pre-requisite test gates, Docker BuildKit multi-stage builds with GitHub Actions layer caching (`type=gha`), lowercase GHCR image naming, immutable commit SHA + SemVer tags, gated `ghcr.io` publishing (restricted to `main`/tags; PRs build without pushing), and Trivy container vulnerability scanning.
   - Created production deployment manifest [`docker-compose.prod.yml`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/docker-compose.prod.yml) pulling pre-built GHCR images with immutable commit SHA tags.
   - Created [`DEPLOYMENT_GUIDE.md`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/DEPLOYMENT_GUIDE.md) detailing GHCR authentication, immutable image tag selection, named volume protection, zero-downtime rolling updates, and fast rollback procedures.
+  - Published repository to GitHub at [`https://github.com/vvsprasad9/ShopSphere`](https://github.com/vvsprasad9/ShopSphere) (Public visibility, 323 files, commit `a7350bb`).
+  - Remote GitHub Actions execution verified live:
+    - **Backend CI**: `status: completed`, `conclusion: success` (all 143 tests passed & JAR packaged on Ubuntu runner).
+    - **Frontend CI**: `status: completed`, `conclusion: success` (Vitest passed & Vite production build verified on Ubuntu runner).
+    - **Docker Build & GHCR Publish**: Active in-progress execution.
   - Local verification: Backend tests (143/143 passed in 57.2s), backend package (BUILD SUCCESS in 6.5s), frontend tests (3/3 passed), frontend build (13.3s), compose validation (exited code 0).
 - [ ] Module 6: AWS Cloud Deployment.
