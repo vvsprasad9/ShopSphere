@@ -252,7 +252,7 @@ jobs:
           format: 'table'
           output: 'policy-filtered-backend-report.txt'
           exit-code: '1'
-          ignore-unfixed: true
+          ignore-unfixed: false
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
@@ -264,7 +264,7 @@ jobs:
           format: 'table'
           output: 'policy-filtered-frontend-report.txt'
           exit-code: '1'
-          ignore-unfixed: true
+          ignore-unfixed: false
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
