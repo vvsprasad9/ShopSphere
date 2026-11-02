@@ -1,280 +1,161 @@
 # ==============================================================================
 # ShopSphere Production DevSecOps Security Exception Registry
 #
-# Policy: Every exception must document:
-# 1. CVE Identifier
-# 2. Technical Justification
-# 3. Security Owner
-# 4. Compensating Mitigation Controls
-# 5. Review / Expiry Date
+# Policy & Governance Requirements:
+# 1. Zero tolerance for unpatched CVEs where fixed releases exist.
+# 2. Every retained entry must document:
+#    - CVE Identifier
+#    - Classification: [NOT AFFECTED] | [MITIGATED] | [STILL VULNERABLE]
+#    - Upstream Affected Component & Fixed Version
+#    - Technical Architecture & Attack Preconditions
+#    - Compensating Mitigation Controls
+#    - Security Owner
+#    - Review & Expiry Date
+# 3. An exception is NEVER claimed as "fixed" merely because it is ignored.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Apache Tomcat Embedded - Container Security Exceptions
+# AUDIT REMOVAL RECORD (Resolved by Library & Runtime Upgrades):
+# - Apache Tomcat (Upgraded 10.1.36 -> 10.1.61):
+#   * CVE-2026-41293 (HTTP/2 Header Parsing) - Fixed in 10.1.55+ -> REMOVED
+#   * CVE-2026-86350 (HTTP/2 Header Parsing Regression) - Fixed in 10.1.60+ -> REMOVED
+#   * CVE-2026-43512 (Digest Auth Bypass) - Fixed in 10.1.55+ -> REMOVED
+#   * CVE-2026-43515 (Security Constraint Authorization) - Fixed in 10.1.55+ -> REMOVED
+#   * CVE-2026-65182 (Constraint Bypass via Path Ordering) - Fixed in 10.1.58+ -> REMOVED
+#   * CVE-2026-65905 (Digest Auth Replay) - Fixed in 10.1.58+ -> REMOVED
+#   * CVE-2026-68525 (FORM Login Constraint Bypass) - Fixed in 10.1.58+ -> REMOVED
+#   * CVE-2025-48988 (Multipart Upload Part Count DoS) - Fixed in 10.1.44+ -> REMOVED
+#   * CVE-2025-48989 (HTTP/2 MadeYouReset DoS) - Fixed in 10.1.44+ -> REMOVED
+#   * CVE-2025-52520 (Multipart Integer Overflow) - Fixed in 10.1.44+ -> REMOVED
+#   * CVE-2025-53506 (HTTP/2 Stream DoS) - Fixed in 10.1.44+ -> REMOVED
+#   * CVE-2025-55752 (Rewrite Valve Traversal) - Fixed in 10.1.44+ -> REMOVED
+#   * CVE-2026-24734 (OCSP Verification Bypass) - Fixed in 10.1.48+ -> REMOVED
+#   * CVE-2026-24880 (Chunk Extension Smuggling) - Fixed in 10.1.48+ -> REMOVED
+#   * CVE-2026-34483 (JsonAccessLogValve Escaping) - Fixed in 10.1.50+ -> REMOVED
+#   * CVE-2026-34487 (Cloud Membership Token Leak) - Fixed in 10.1.54+ -> REMOVED
+#   * CVE-2026-41284 (WebDAV Request Body DoS) - Fixed in 10.1.55+ -> REMOVED
+#   * CVE-2026-42498 (WebSocket Redirect Auth Reuse) - Fixed in 10.1.55+ -> REMOVED
+#   * CVE-2026-43513 (LockOutRealm Case Sensitivity) - Fixed in 10.1.55+ -> REMOVED
+#
+# - FasterXML Jackson (Upgraded 2.18.4 -> 2.18.12):
+#   * CVE-2026-54512 (PolymorphicTypeValidator Bypass) - Fixed in 2.18.8+ -> REMOVED
+#   * CVE-2026-54513 (Array Sub-Type PTV Bypass) - Fixed in 2.18.8+ -> REMOVED
+#   * CVE-2026-68494 (Async Parser Number Length Bypass) - Fixed in 2.18.8+ -> REMOVED
+#   * CVE-2026-68497 (CoreXMLDeserializers CPU DoS) - Fixed in 2.18.10+ -> REMOVED
+#   * CVE-2026-89407 (NumberInput ReDoS) - Fixed in 2.18.11+ -> REMOVED
+#   * CVE-2026-91776 (Unbounded Type ID Cache Memory DoS) - Fixed in 2.18.11+ -> REMOVED
+#   * CVE-2026-91777 (Forward Reference Accumulator DoS) - Fixed in 2.18.12 -> REMOVED
+#   * CVE-2026-89425 (UTF8DataInputJsonParser Out-of-Bounds DoS) - Fixed in 2.18.12 -> REMOVED
+#
+# - Micrometer (Upgraded 1.13.15 -> 1.15.12):
+#   * CVE-2026-40984 (Server HTTP Instrumentation Tag DoS) - Fixed in 1.15.12+ -> REMOVED
 # ------------------------------------------------------------------------------
 
-# CVE-2026-41293: Apache Tomcat HTTP/2 request header parsing vulnerability
-# Justification: ShopSphere backend container executes on an internal private Docker bridge network.
-# All external ingress is terminated by Nginx reverse proxy which converts client traffic to sanitized HTTP/1.1 upstream requests.
-# Embedded Tomcat HTTP/2 connector is not enabled.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx proxy enforces strict HTTP/1.1 RFC compliance and header sanitization.
-# Expiry Date: 2027-01-01
-CVE-2026-41293
-
-# CVE-2026-43512: Apache Tomcat Authentication bypass via limited realm matching
-# Justification: ShopSphere does not use Tomcat container-managed authentication or web.xml security constraints.
-# All authentication is statelessly enforced in application memory by Spring Security and JwtAuthenticationFilter.
-# Owner: Java Application Security Engineer
-# Mitigation: Spring Security SecurityFilterChain intercepts and validates JWT on every request before handler execution.
-# Expiry Date: 2027-01-01
-CVE-2026-43512
-
-# CVE-2026-43515: Apache Tomcat Improper Authorization in container security realms
-# Justification: Container authorization realms are disabled; role-based access control (ERole) is enforced via method security and Spring Security.
-# Owner: Java Application Security Engineer
-# Mitigation: PreAuthorize annotations and SecurityFilterChain enforce RBAC.
-# Expiry Date: 2027-01-01
-CVE-2026-43515
-
-# CVE-2026-65182: Apache Tomcat Security constraint bypass
-# Justification: Container-level security constraints are unused; all security policies are managed by Spring Security.
-# Owner: Java Application Security Engineer
-# Mitigation: Spring Security filter chain handles 100% of authentication and authorization.
-# Expiry Date: 2027-01-01
-CVE-2026-65182
-
-# CVE-2026-65905: Apache Tomcat Authentication bypass via limited realm matching
-# Justification: Container authentication realms are unused in this stateless Spring Boot REST API.
-# Owner: Java Application Security Engineer
-# Mitigation: Stateless JWT validation with database-backed token revocation.
-# Expiry Date: 2027-01-01
-CVE-2026-65905
-
-# CVE-2026-68525: Apache Tomcat Unauthorized resource access via FORM login
-# Justification: FORM authentication is completely disabled; authentication endpoint is a REST POST to /api/v1/auth/login.
-# Owner: Java Application Security Engineer
-# Mitigation: FORM authentication is not configured in Spring Security or Tomcat.
-# Expiry Date: 2027-01-01
-CVE-2026-68525
-
 # ------------------------------------------------------------------------------
-# FasterXML Jackson Databind & Core - Serialization Security Exceptions
+# SECTION 1: SPRING SECURITY FRAMEWORK
 # ------------------------------------------------------------------------------
 
-# CVE-2026-54512: Jackson Databind polymorphic type validation bypass
-# Justification: Vulnerability requires polymorphic default typing (enableDefaultTyping).
-# ShopSphere uses strict concrete DTO classes for all request/response serialization with explicit field mapping.
-# Owner: Application Backend Lead
-# Mitigation: Default polymorphic typing is disabled; Spring Boot ObjectMapper rejects polymorphic payloads.
-# Expiry Date: 2027-01-01
-CVE-2026-54512
-
-# CVE-2026-54513: Jackson Databind security bypass in polymorphic deserialization
-# Justification: Polymorphic type deserialization is not configured on any endpoint.
-# Owner: Application Backend Lead
-# Mitigation: All controller endpoints accept strongly-typed concrete record/class DTOs.
-# Expiry Date: 2027-01-01
-CVE-2026-54513
-
-# CVE-2026-68497: Jackson Databind deserialization gadget chain
-# Justification: Gadget chain relies on polymorphic typing with vulnerable classes that are absent from the classpath.
-# Owner: Application Backend Lead
-# Mitigation: Jackson 2.18.4 BOM applied; polymorphic typing disabled.
-# Expiry Date: 2027-01-01
-CVE-2026-68497
-
-# CVE-2026-91776: Jackson Databind / Core recursion limit
-# Justification: Deeply nested JSON payload attack.
-# Owner: Application Backend Lead
-# Mitigation: Nginx limits client request bodies to 10MB; Spring Boot parser enforces recursion limits.
-# Expiry Date: 2027-01-01
-CVE-2026-91776
-
-# CVE-2026-91777: Jackson Databind polymorphic type validation bypass
-# Justification: Default typing is disabled; concrete DTOs are enforced.
-# Owner: Application Backend Lead
-# Mitigation: DTO validation via Bean Validation (@Valid, @NotNull).
-# Expiry Date: 2027-01-01
-CVE-2026-91777
-
-# CVE-2026-68494: Jackson Core parser numeric bound condition
-# Justification: Edge condition in numeric token parsing.
-# Owner: Application Backend Lead
-# Mitigation: Jackson 2.18.4 applied; input validated by Jakarta Validation annotations.
-# Expiry Date: 2027-01-01
-CVE-2026-68494
-
-# CVE-2026-89407: Jackson Core parser buffer boundary condition
-# Justification: Parser buffer boundary condition for oversized tokens.
-# Owner: Application Backend Lead
-# Mitigation: Request payload limits enforced at reverse proxy and application layers.
-# Expiry Date: 2027-01-01
-CVE-2026-89407
-
-# CVE-2026-89425: Jackson Core parser boundary condition
-# Justification: Parser buffer boundary condition for oversized tokens.
-# Owner: Application Backend Lead
-# Mitigation: Request payload limits enforced at reverse proxy and application layers.
-# Expiry Date: 2027-01-01
-CVE-2026-89425
-
-# ------------------------------------------------------------------------------
-# Micrometer - Metrics Instrumentation Security Exceptions
-# ------------------------------------------------------------------------------
-
-# CVE-2026-40984: Micrometer metrics instrumentation vulnerability in Jetty bindings
-# Justification: Vulnerability resides strictly in micrometer-jetty11 / micrometer-jetty12 modules.
-# ShopSphere uses embedded Apache Tomcat; Jetty is not present in the runtime classpath.
-# Owner: DevSecOps Engineering
-# Mitigation: Jetty modules are not included in the application dependencies or runtime container.
-# Expiry Date: 2027-01-01
-CVE-2026-40984
-
-# ------------------------------------------------------------------------------
-# Spring Framework & Tomcat Multipart - Remaining Documented Exceptions
-# ------------------------------------------------------------------------------
-
-# CVE-2025-48988: Apache Tomcat DoS in multipart upload handling
-# Justification: Edge case in multipart parsing. ShopSphere runs behind Nginx reverse proxy.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx enforces client_max_body_size 10M, rate limits, and 60s timeout before traffic reaches Tomcat.
-# Expiry Date: 2027-01-01
-CVE-2025-48988
-
-# CVE-2026-22732: Spring Security Web policy bypass for non-servlet router patterns
-# Justification: ShopSphere uses standard Spring MVC servlet-based security filters with explicit @PreAuthorize method annotations.
-# Owner: Java Application Security Engineer
-# Mitigation: Stateless SecurityFilterChain with SessionCreationPolicy.STATELESS and explicit method security @EnableMethodSecurity.
-# Expiry Date: 2027-01-01
+# CVE-2026-22732: Spring Security authorization bypass for non-servlet functional router patterns
+# Classification: NOT AFFECTED
+# Upstream Affected: Spring Security Web 6.3.x functional routing matchers
+# Technical Justification: Vulnerability exists strictly when routing HTTP requests using Spring WebFlux or
+# functional RouterFunction endpoint mappings. ShopSphere is built strictly on standard Spring MVC
+# Servlet architecture with DispatcherServlet, @RestController classes, and standard AntPathRequestMatcher
+# mappings. Furthermore, method security is enforced via @PreAuthorize annotations directly on service methods.
+# Compensating Controls: SecurityFilterChain enforces stateless JWT authentication; method security is enabled.
+# Security Owner: Java Application Security Engineer
+# Review Date: 2027-01-01
 CVE-2026-22732
 
+# ------------------------------------------------------------------------------
+# SECTION 2: SPRING CORE & FRAMEWORK INTERNALS
+# ------------------------------------------------------------------------------
+
 # CVE-2025-41249: Spring Core annotation processing reflection condition
-# Justification: Compile-time / startup metadata processing. No user-controlled classes are reflected or loaded at runtime.
-# Owner: Java Application Security Engineer
-# Mitigation: Classloading and annotation scanning is restricted to internal package hierarchy com.shopsphere.*.
-# Expiry Date: 2027-01-01
+# Classification: NOT AFFECTED
+# Upstream Affected: Spring Core reflection metadata cache under untrusted class loading
+# Technical Justification: The reflection condition requires untrusted classes to be introduced into the
+# class loader at runtime. In ShopSphere, class loading is completely static and restricted to the immutable
+# container classpath. Zero dynamic class loading or untrusted reflection is performed.
+# Compensating Controls: Immutable container filesystem; non-root user execution prevents runtime class tampering.
+# Security Owner: Java Application Security Engineer
+# Review Date: 2027-01-01
 CVE-2025-41249
 
-# CVE-2026-47884: Spring WebMVC path traversal in resource handlers
-# Justification: Static resources are not served by Spring Boot; they are served entirely by Nginx in the frontend container.
-# Backend exposes only JSON REST APIs under /api/v1/*.
-# Owner: Application Backend Lead
-# Mitigation: Nginx reverse proxy isolates API routing; static files are served directly by Nginx with try_files $uri =404.
-# Expiry Date: 2027-01-01
-CVE-2026-47884
-
-# CVE-2026-41842: Spring Framework Denial of Service when parsing specific headers
-# Justification: Nginx frontend proxy normalizes and sanitizes all incoming headers before forwarding requests to backend.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx upstream reverse proxy sanitization and 60s timeout enforcement.
-# Expiry Date: 2027-01-01
+# CVE-2026-41842: Spring Framework Denial of Service when parsing specific HTTP request headers
+# Classification: MITIGATED
+# Upstream Affected: Spring Framework Web header parsing
+# Technical Justification: Vulnerability involves CPU exhaustion when parsing malformed or excessively long
+# multi-value headers directly in Spring Framework. In ShopSphere, Spring Boot never receives raw Internet traffic.
+# All inbound requests pass through the Nginx reverse proxy which enforces strict RFC header syntax, limits
+# client header buffers to 8k (large_client_header_buffers 4 8k), and enforces proxy_read_timeout 60s.
+# Compensating Controls: Nginx reverse proxy header normalization, edge buffering, and request timeouts.
+# Security Owner: DevSecOps Engineering
+# Review Date: 2027-01-01
 CVE-2026-41842
 
-# CVE-2025-48989: Apache Tomcat HTTP/2 MadeYouReset DoS
-# Justification: Embedded Tomcat runs strictly with HTTP/1.1; HTTP/2 connector is disabled.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx upstream reverse proxy communicates via HTTP/1.1 over edge network.
-# Expiry Date: 2027-01-01
-CVE-2025-48989
+# ------------------------------------------------------------------------------
+# SECTION 3: SPRING WEBMVC ROUTING & RENDERING
+# ------------------------------------------------------------------------------
 
-# CVE-2025-52520: Apache Tomcat Denial of Service condition
-# Justification: DoS via malformed request framing.
-# Owner: DevSecOps Engineering
-# Mitigation: Edge Nginx reverse proxy buffers and rejects malformed HTTP frames before upstream proxying.
-# Expiry Date: 2027-01-01
-CVE-2025-52520
-
-# CVE-2025-53506: Apache Tomcat Denial of Service condition
-# Justification: DoS via pipelined request framing.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx proxy enforces request serialization and 60s proxy timeouts.
-# Expiry Date: 2027-01-01
-CVE-2025-53506
-
-# CVE-2025-55752: Apache Tomcat Catalina connection handling
-# Justification: Unhandled connection termination in Catalina.
-# Owner: DevSecOps Engineering
-# Mitigation: Handled gracefully by Nginx proxy retry and upstream connection pooling.
-# Expiry Date: 2027-01-01
-CVE-2025-55752
-
-# CVE-2026-24734: Apache Tomcat Certificate revocation bypass
-# Justification: mTLS / Client certificate authentication is not used; authentication is token-based JWT.
-# Owner: Java Application Security Engineer
-# Mitigation: Client certificates are not accepted or evaluated.
-# Expiry Date: 2027-01-01
-CVE-2026-24734
-
-# CVE-2026-24880: Apache Tomcat HTTP Request/Response smuggling
-# Justification: Smuggling attack relying on conflicting Content-Length / Transfer-Encoding headers.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx enforces RFC-compliant HTTP normalization and rejects ambiguous headers.
-# Expiry Date: 2027-01-01
-CVE-2026-24880
-
-# CVE-2026-34483: Apache Tomcat internal buffer boundary condition
-# Justification: Buffer edge case in chunked transfer encoding.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx re-buffers upstream requests and enforces max body limits.
-# Expiry Date: 2027-01-01
-CVE-2026-34483
-
-# CVE-2026-34487: Apache Tomcat connection leak condition
-# Justification: Premature connection close in keepalive pool.
-# Owner: DevSecOps Engineering
-# Mitigation: Tomcat maxConnections and connectionTimeout parameters active in application-prod.yml.
-# Expiry Date: 2027-01-01
-CVE-2026-34487
-
-# CVE-2026-41284: Apache Tomcat request header boundary condition
-# Justification: Excessively long header names.
-# Owner: DevSecOps Engineering
-# Mitigation: Nginx limits client header buffer size to standard 8k.
-# Expiry Date: 2027-01-01
-CVE-2026-41284
-
-# CVE-2026-42498: Apache Tomcat request parsing edge case
-# Justification: Malformed URI path encoding.
-# Owner: DevSecOps Engineering
-# Mitigation: Spring Web MVC URL decoding and Nginx normalize URI paths before dispatch.
-# Expiry Date: 2027-01-01
-CVE-2026-42498
-
-# CVE-2026-43513: Apache Tomcat realm authentication matching
-# Justification: Tomcat container security realms are disabled; Spring Security enforces all authentication.
-# Owner: Java Application Security Engineer
-# Mitigation: Delegated entirely to Spring Security filter chain.
-# Expiry Date: 2027-01-01
-CVE-2026-43513
-
-# CVE-2026-40973: Spring Boot remote code execution in specific Actuator Jolokia / H2 endpoints
-# Justification: Jolokia and H2 console are disabled in production profile (application-prod.yml).
-# Only health and info endpoints are exposed beneath /actuator.
-# Owner: DevSecOps Engineering
-# Mitigation: management.endpoints.web.exposure.include=health,info. H2 console disabled.
-# Expiry Date: 2027-01-01
-CVE-2026-40973
-
-# CVE-2026-41716: Spring Data Commons DoS via unbounded pageable parameters
-# Justification: Unbounded pagination requests.
-# Owner: Application Backend Lead
-# Mitigation: Controllers enforce Pageable limits with PageRequest and default page size 10/20.
-# Expiry Date: 2027-01-01
-CVE-2026-41716
-
-# CVE-2026-41850: Spring Expression Language (SpEL) DoS condition
-# Justification: User-supplied expressions are never evaluated by SpEL in ShopSphere.
-# SpEL is restricted strictly to compile-time @PreAuthorize security annotations.
-# Owner: Java Application Security Engineer
-# Mitigation: Zero user input is parsed or evaluated via SpEL ExpressionParser.
-# Expiry Date: 2027-01-01
-CVE-2026-41850
+# CVE-2026-47884: Spring WebMVC path traversal in resource handlers
+# Classification: NOT AFFECTED / MITIGATED
+# Upstream Affected: Spring WebMVC ResourceHttpRequestHandler serving static resources
+# Technical Justification: Spring Boot is configured purely as a headless JSON REST API (all endpoints under /api/v1/*).
+# Static file serving is completely handled by Nginx in the frontend container using `try_files $uri =404`.
+# No Spring WebMVC static resource locations (classpath:/static/, /public/) are exposed to client routing.
+# Compensating Controls: Nginx web server isolates static assets; Spring Boot ResourceHandlerRegistry is disabled.
+# Security Owner: Application Backend Lead
+# Review Date: 2027-01-01
+CVE-2026-47884
 
 # CVE-2026-41845: Spring WebMVC Cross-site scripting in error views
-# Justification: Spring MVC HTML views are not used; application is a pure headless REST API returning application/json.
-# Owner: Application Backend Lead
-# Mitigation: GlobalExceptionHandler returns strongly typed ErrorResponse JSON objects, never HTML error pages.
-# Expiry Date: 2027-01-01
+# Classification: NOT AFFECTED
+# Upstream Affected: Spring MVC server-side HTML error view templates
+# Technical Justification: ShopSphere does not use server-side HTML rendering (no JSP, Thymeleaf, or FreeMarker error views).
+# The backend is a pure REST JSON API. All errors are caught by GlobalExceptionHandler which serializes a strongly-typed
+# ErrorResponse Java record as application/json. Zero HTML is produced by the backend application.
+# Compensating Controls: Content-Type: application/json enforced; X-Content-Type-Options: nosniff header set by Nginx.
+# Security Owner: Application Backend Lead
+# Review Date: 2027-01-01
 CVE-2026-41845
 
+# ------------------------------------------------------------------------------
+# SECTION 4: SPRING EXPRESSION LANGUAGE (SpEL) & DATA COMMONS
+# ------------------------------------------------------------------------------
+
+# CVE-2026-41850: Spring Expression Language (SpEL) Denial of Service
+# Classification: NOT AFFECTED
+# Upstream Affected: SpEL expression evaluation engine
+# Technical Justification: Vulnerability requires user-supplied expressions to be evaluated by SpEL ExpressionParser.
+# In ShopSphere, SpEL is used solely in static compile-time @PreAuthorize annotations (e.g., @PreAuthorize("hasRole('ADMIN')")).
+# Zero user input or dynamic runtime expressions are parsed or evaluated by SpEL anywhere in the codebase.
+# Compensating Controls: Codebase audit confirms zero SpEL expression parsing of external parameters.
+# Security Owner: Java Application Security Engineer
+# Review Date: 2027-01-01
+CVE-2026-41850
+
+# CVE-2026-41716: Spring Data Commons DoS via unbounded pagination parameters
+# Classification: MITIGATED
+# Upstream Affected: Spring Data Commons pageable parameter resolver
+# Technical Justification: Potential resource consumption if clients request unbounded page sizes (e.g., size=1000000).
+# ShopSphere controllers enforce PageRequest constraints, default page sizes of 10 or 20, and cap maximum page size.
+# Compensating Controls: Bounded Pageable validation in controller layer and DB query timeout bounds.
+# Security Owner: Application Backend Lead
+# Review Date: 2027-01-01
+CVE-2026-41716
+
+# ------------------------------------------------------------------------------
+# SECTION 5: SPRING BOOT ACTUATOR & RUNTIME
+# ------------------------------------------------------------------------------
+
+# CVE-2026-40973: Spring Boot remote code execution in Actuator Jolokia / H2 console endpoints
+# Classification: NOT AFFECTED
+# Upstream Affected: Actuator Jolokia JMX integration and H2 Web Console
+# Technical Justification: Jolokia is not present on the application classpath. The H2 web console is strictly disabled
+# in production (spring.h2.console.enabled=false in application-prod.yml). Actuator exposure is strictly restricted
+# to health and info endpoints (management.endpoints.web.exposure.include=health,info).
+# Compensating Controls: Production configuration explicitly disables H2 console and limits Actuator exposure.
+# Security Owner: DevSecOps Engineering
+# Review Date: 2027-01-01
+CVE-2026-40973

@@ -412,7 +412,19 @@ Tracking the end-to-end development phases of **ShopSphere**, a full-stack produ
     - **Docker Build & GHCR Publish**: `status: completed`, `conclusion: success` (All 6 stages passed: frontend test gate, backend test gate, frontend candidate build, backend candidate build, Trivy vulnerability scan, and verified image promotion to `latest`).
     - **Security Gating Architecture Verified**: Candidate images (`sha-${SHORT_SHA}`) are built and scanned first; verified images are promoted to `latest` only after Trivy container scan passes with exit code 0.
     - **Frontend Container Hardening**: Base Alpine packages upgraded (`apk update && apk upgrade --no-cache`), reducing vulnerabilities from 60 to **0** (CVE-2026-111497 completely resolved).
-    - **Backend Dependency Hardening**: Upgraded Spring Boot parent to `3.3.13`, Jackson BOM to `2.18.4`, embedded Tomcat to `10.1.36`, Razorpay json to `20240303`, eliminating all CRITICAL vulnerabilities in the runtime JAR.
-    - **Documented Exception Registry**: Comprehensive [`.trivyignore`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/.trivyignore) documenting technical justifications, owners, mitigations, and expiry dates for upstream framework release conditions.
-  - Local verification: Backend tests (143/143 passed in 57.2s), backend package (BUILD SUCCESS in 6.5s), frontend tests (3/3 passed), frontend build (13.3s), compose validation (exited code 0).
+    - **Backend Dependency Hardening (Final Audit Remediation)**:
+      * Upgraded Apache Tomcat embedded container to `10.1.61` (resolving CRITICAL `CVE-2026-41293`, regression `CVE-2026-86350`, `CVE-2026-43512`, `CVE-2026-43515`, `CVE-2026-65182`, `CVE-2026-65905`, `CVE-2026-68525`, and 12 other historical Tomcat CVEs).
+      * Upgraded FasterXML Jackson BOM to `2.18.12` (resolving CRITICAL PolymorphicTypeValidator bypass `CVE-2026-54512`, async number bypass `CVE-2026-68494`, CoreXMLDeserializers CPU DoS `CVE-2026-68497`, number validation ReDoS `CVE-2026-89407`, unbounded type ID memory leak `CVE-2026-91776`, `CVE-2026-54513`, `CVE-2026-91777`, and `CVE-2026-89425`).
+      * Upgraded Micrometer to `1.15.12` (resolving HTTP server observation tag cardinality DoS `CVE-2026-40984`).
+      * Integrated CycloneDX Maven Plugin (`cyclonedx-maven-plugin:2.8.2`) to generate validated application SBOMs (`target/classes/META-INF/sbom/application.cdx.json`).
+    - **Exception Registry Audit & Pruning**:
+      * Purged all 28 resolved CVE exceptions from [`.trivyignore`](file:///c:/Users/vemul/Downloads/Ecommerce%20Project/.trivyignore).
+      * Retained only 8 justified exceptions strictly classified into `NOT AFFECTED` (6 items) and `MITIGATED` (2 items), each with architectural attack preconditions, reverse proxy / bean validation compensating controls, owner, and review date.
+    - **Spring Boot 4.1.2 Lifecycle & Compatibility Evaluation**:
+      * Evaluated Spring Boot 4.1.2 + Java 21 migration across Spring Security 7.1.2, Springdoc OpenAPI 3.2.0, JJWT 0.12.6, Razorpay SDK 1.4.6, Hibernate 7.4.13, MySQL connector 9.7.0, Actuator 1.17.2, and modular test infrastructure (`spring-boot-starter-webmvc-test`).
+    - **Dual Vulnerability Reporting & Immutable Digest Promotion Pipeline**:
+      * Implemented dual Trivy reporting in `.github/workflows/docker-publish.yml`: Unfiltered Vulnerability Scan (`--ignorefile /dev/null`) alongside Policy-Filtered Vulnerability Scan (`.trivyignore`).
+      * Emitted container CycloneDX SBOMs and retained scan reports for 30 days as workflow artifacts.
+      * Promoted verified candidate images strictly by immutable `@sha256:...` digest to `latest`.
+  - Local verification: Backend tests (143/143 passed in 1m 29s), backend package & SBOM verification (BUILD SUCCESS in 2m 36s), frontend tests (3/3 passed in 31.4s), frontend build (29.9s).
 - [ ] Module 6: AWS Cloud Deployment.

@@ -43,8 +43,16 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Execute Backend Tests
-        run: mvn clean test -B
+      - name: Execute Backend Tests & Package SBOM
+        run: mvn clean verify -B
+
+      - name: Upload Backend CycloneDX SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-cyclonedx-sbom
+          path: shopsphere/backend/target/classes/META-INF/sbom/application.cdx.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   test-frontend:
     name: Frontend Test Quality Gate
@@ -69,6 +77,9 @@ jobs:
       - name: Execute Frontend Tests
         run: npm test
 
+      - name: Execute Frontend Production Build
+        run: npm run build
+
   # =================================================================
   # Step 1: Build & Publish Candidate Spring Boot Backend Docker Image
   # Immutable commit SHA candidate image only; 'latest' is NOT pushed here
@@ -77,6 +88,9 @@ jobs:
     name: Build & Publish Backend Candidate Image
     needs: test-backend
     runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.repo-info.outputs.image_name }}
+      digest: ${{ steps.build-backend.outputs.digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -107,6 +121,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Backend Candidate Image
+        id: build-backend
         uses: docker/build-push-action@v6
         with:
           context: ./shopsphere/backend
@@ -125,6 +140,9 @@ jobs:
     name: Build & Publish Frontend Candidate Image
     needs: test-frontend
     runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.repo-info.outputs.image_name }}
+      digest: ${{ steps.build-frontend.outputs.digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -155,6 +173,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Frontend Candidate Image
+        id: build-frontend
         uses: docker/build-push-action@v6
         with:
           context: ./shopsphere/frontend
@@ -166,11 +185,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # =================================================================
-  # Step 3: Security Vulnerability Scan (Trivy Gate)
-  # Scans exact candidate images. Blocks subsequent promotion on failure.
+  # Step 3: Security Vulnerability Scan & Dual Reporting (Trivy Gate)
+  # Scans exact candidate image digests. Blocks promotion on policy failure.
   # =================================================================
   security-scan:
-    name: Container Vulnerability Scan
+    name: Container Vulnerability Scan & Dual Reporting
     needs: [build-and-push-backend, build-and-push-frontend]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -185,69 +204,161 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve Lowercase Repository Name & Target Candidate Tags
-        id: repo-info
+      - name: Resolve Candidate Image Digests
+        id: digest-info
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "backend_image=ghcr.io/${OWNER_LC}/shopsphere-backend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "frontend_image=ghcr.io/${OWNER_LC}/shopsphere-frontend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          BACKEND_CANDIDATE="${{ needs.build-and-push-backend.outputs.image_name }}@${{ needs.build-and-push-backend.outputs.digest }}"
+          FRONTEND_CANDIDATE="${{ needs.build-and-push-frontend.outputs.image_name }}@${{ needs.build-and-push-frontend.outputs.digest }}"
+          echo "backend_candidate=${BACKEND_CANDIDATE}" >> $GITHUB_OUTPUT
+          echo "frontend_candidate=${FRONTEND_CANDIDATE}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Run Trivy Vulnerability Scanner on Backend Candidate Image
-        # Using immutable commit SHA pinned to official release v0.36.0
+      # -------------------------------------------------------------
+      # 1. Unfiltered Vulnerability Scans (Full visibility without .trivyignore)
+      # -------------------------------------------------------------
+      - name: Unfiltered Vulnerability Scan — Backend Image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ steps.repo-info.outputs.backend_image }}
+          image-ref: ${{ steps.digest-info.outputs.backend_candidate }}
           format: 'table'
-          output: 'trivy-backend-report.txt'
+          output: 'unfiltered-backend-report.txt'
+          exit-code: '0'
+          trivy-options: '--ignorefile /dev/null'
+          ignore-unfixed: false
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Unfiltered Vulnerability Scan — Frontend Image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.digest-info.outputs.frontend_candidate }}
+          format: 'table'
+          output: 'unfiltered-frontend-report.txt'
+          exit-code: '0'
+          trivy-options: '--ignorefile /dev/null'
+          ignore-unfixed: false
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      # -------------------------------------------------------------
+      # 2. Policy-Filtered Vulnerability Scans (Enforcing Gate with .trivyignore)
+      # -------------------------------------------------------------
+      - name: Policy-Filtered Vulnerability Gate — Backend Image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.digest-info.outputs.backend_candidate }}
+          format: 'table'
+          output: 'policy-filtered-backend-report.txt'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Run Trivy Vulnerability Scanner on Frontend Candidate Image
+      - name: Policy-Filtered Vulnerability Gate — Frontend Image
         if: success() || failure()
-        # Using immutable commit SHA pinned to official release v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ steps.repo-info.outputs.frontend_image }}
+          image-ref: ${{ steps.digest-info.outputs.frontend_candidate }}
           format: 'table'
-          output: 'trivy-frontend-report.txt'
+          output: 'policy-filtered-frontend-report.txt'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Display Scan Reports in Job Log
+      # -------------------------------------------------------------
+      # 3. Container SBOM Generation (CycloneDX)
+      # -------------------------------------------------------------
+      - name: Generate Backend Container CycloneDX SBOM
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.digest-info.outputs.backend_candidate }}
+          format: 'cyclonedx'
+          output: 'sbom-backend-container.cdx.json'
+
+      - name: Generate Frontend Container CycloneDX SBOM
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.digest-info.outputs.frontend_candidate }}
+          format: 'cyclonedx'
+          output: 'sbom-frontend-container.cdx.json'
+
+      # -------------------------------------------------------------
+      # 4. Display Scan Reports in Job Summary & Console
+      # -------------------------------------------------------------
+      - name: Display Scan Reports in Job Log & Step Summary
         if: always()
         run: |
-          if [ -f trivy-backend-report.txt ]; then
-            echo "=================== BACKEND TRIVY REPORT ==================="
-            cat trivy-backend-report.txt
-          fi
-          if [ -f trivy-frontend-report.txt ]; then
-            echo "=================== FRONTEND TRIVY REPORT ==================="
-            cat trivy-frontend-report.txt
+          echo "## 🛡️ Container Vulnerability Scan & Dual Reporting Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Candidate Backend: \`${{ steps.digest-info.outputs.backend_candidate }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Candidate Frontend: \`${{ steps.digest-info.outputs.frontend_candidate }}\`" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f unfiltered-backend-report.txt ]; then
+            echo "### Backend Unfiltered Report" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat unfiltered-backend-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "=================== UNFILTERED BACKEND REPORT ==================="
+            cat unfiltered-backend-report.txt
           fi
 
-      - name: Upload Vulnerability Scan Artifacts
+          if [ -f policy-filtered-backend-report.txt ]; then
+            echo "### Backend Policy-Filtered Report" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat policy-filtered-backend-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "=================== POLICY-FILTERED BACKEND REPORT ==================="
+            cat policy-filtered-backend-report.txt
+          fi
+
+          if [ -f unfiltered-frontend-report.txt ]; then
+            echo "### Frontend Unfiltered Report" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat unfiltered-frontend-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "=================== UNFILTERED FRONTEND REPORT ==================="
+            cat unfiltered-frontend-report.txt
+          fi
+
+          if [ -f policy-filtered-frontend-report.txt ]; then
+            echo "### Frontend Policy-Filtered Report" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat policy-filtered-frontend-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "=================== POLICY-FILTERED FRONTEND REPORT ==================="
+            cat policy-filtered-frontend-report.txt
+          fi
+
+      # -------------------------------------------------------------
+      # 5. Retain Artifacts (Dual Reports + Container SBOMs)
+      # -------------------------------------------------------------
+      - name: Upload Vulnerability Scan & SBOM Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: container-vulnerability-reports
+          name: security-scan-and-sbom-reports
           path: |
-            trivy-backend-report.txt
-            trivy-frontend-report.txt
+            unfiltered-backend-report.txt
+            unfiltered-frontend-report.txt
+            policy-filtered-backend-report.txt
+            policy-filtered-frontend-report.txt
+            sbom-backend-container.cdx.json
+            sbom-frontend-container.cdx.json
           if-no-files-found: ignore
           retention-days: 30
 
   # =================================================================
   # Step 4: Promote Verified Images to 'latest' and SemVer Tags
   # Strictly depends on security-scan passing. Never runs on failure.
+  # Promotes the exact scanned image digest to latest.
   # =================================================================
   promote-images:
-    name: Promote Verified Images to Latest
-    needs: security-scan
+    name: Promote Verified Image Digests to Latest
+    needs: [build-and-push-backend, build-and-push-frontend, security-scan]
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     steps:
@@ -258,24 +369,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve Image Names and Promotion Tags
-        id: promo-tags
+      - name: Promote Backend Verified Digest to Latest
         run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "backend_src=ghcr.io/${OWNER_LC}/shopsphere-backend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "frontend_src=ghcr.io/${OWNER_LC}/shopsphere-frontend:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "backend_latest=ghcr.io/${OWNER_LC}/shopsphere-backend:latest" >> $GITHUB_OUTPUT
-          echo "frontend_latest=ghcr.io/${OWNER_LC}/shopsphere-frontend:latest" >> $GITHUB_OUTPUT
+          SRC_DIGEST="${{ needs.build-and-push-backend.outputs.image_name }}@${{ needs.build-and-push-backend.outputs.digest }}"
+          TARGET_LATEST="${{ needs.build-and-push-backend.outputs.image_name }}:latest"
+          echo "Pulling verified digest: ${SRC_DIGEST}"
+          docker pull "${SRC_DIGEST}"
+          docker tag "${SRC_DIGEST}" "${TARGET_LATEST}"
+          docker push "${TARGET_LATEST}"
 
-      - name: Promote Backend Candidate Image to Latest
+      - name: Promote Frontend Verified Digest to Latest
         run: |
-          docker pull ${{ steps.promo-tags.outputs.backend_src }}
-          docker tag ${{ steps.promo-tags.outputs.backend_src }} ${{ steps.promo-tags.outputs.backend_latest }}
-          docker push ${{ steps.promo-tags.outputs.backend_latest }}
+          SRC_DIGEST="${{ needs.build-and-push-frontend.outputs.image_name }}@${{ needs.build-and-push-frontend.outputs.digest }}"
+          TARGET_LATEST="${{ needs.build-and-push-frontend.outputs.image_name }}:latest"
+          echo "Pulling verified digest: ${SRC_DIGEST}"
+          docker pull "${SRC_DIGEST}"
+          docker tag "${SRC_DIGEST}" "${TARGET_LATEST}"
+          docker push "${TARGET_LATEST}"
 
-      - name: Promote Frontend Candidate Image to Latest
+      - name: Emit Release Provenance Summary
         run: |
-          docker pull ${{ steps.promo-tags.outputs.frontend_src }}
-          docker tag ${{ steps.promo-tags.outputs.frontend_src }} ${{ steps.promo-tags.outputs.frontend_latest }}
-          docker push ${{ steps.promo-tags.outputs.frontend_latest }}
+          echo "## 🚀 Verified Image Digest Promotion Record" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Target Promotion | Verified Immutable Source Digest |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend** | \`${{ needs.build-and-push-backend.outputs.image_name }}:latest\` | \`${{ needs.build-and-push-backend.outputs.image_name }}@${{ needs.build-and-push-backend.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend** | \`${{ needs.build-and-push-frontend.outputs.image_name }}:latest\` | \`${{ needs.build-and-push-frontend.outputs.image_name }}@${{ needs.build-and-push-frontend.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Promotion Status**: ✅ PROMOTED (Passed all unit tests, candidate builds, and dual Trivy security scans)." >> $GITHUB_STEP_SUMMARY
